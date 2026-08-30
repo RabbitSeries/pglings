@@ -29,10 +29,10 @@
 ## EDIT FROM HERE
 
 # Installation prefix
-prefix=/usr/local/pgsql
+prefix=/usr
 
 # Data directory
-PGDATA="/usr/local/pgsql/data"
+PGDATA="/var/lib/postgres/data"
 
 # Who to run postgres as, usually "postgres".  (NOT "root")
 PGUSER=postgres
