@@ -2,16 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "command": "psql",
+            "command": "sh",
             "label": "Execute Script",
             "args": [
-                "-f",
+                "${workspaceFolder}/run.sh",
                 "${file}"
             ],
             "group": {
                 "kind": "test",
                 "isDefault": true
-            }
+            },
         }
-    ]
+    ],
 }
