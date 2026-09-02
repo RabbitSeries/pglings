@@ -1,11 +1,10 @@
--- Simple SQL Queries
 -- PostgreSQL uses single quotes as string literals.
 
 SELECT 'Hello PostgreSQL';
 
 -- Special commands
-\c exercises;
-
+-- This will change the connection, which also breaks the preceding transaction status.
+-- \c exercises;
 
 SELECT *
 FROM cd.facilities;
@@ -27,7 +26,7 @@ SELECT facid,
        membercost,
        monthlymaintenance
 FROM cd.facilities
-WHERE membercost < monthlymaintenance/50
+WHERE membercost < monthlymaintenance / 50
     and membercost > 0;
 
 -- String is indxed from 1
@@ -48,7 +47,7 @@ WHERE facid IN (1,
 
 SELECT *
 FROM cd.facilities
-WHERE facid = Any('{1, 5}');
+WHERE facid = Any ('{1, 5}');
 
 -- Conditional expression.
 
@@ -101,7 +100,7 @@ LIMIT 1;
 SELECT starttime
 FROM cd.bookings AS bk
 JOIN cd.members AS mem ON bk.memid = mem.memid
-WHERE (mem.firstname || ' ' || mem.surname)= 'David Farrell';
+WHERE (mem.firstname || ' ' || mem.surname) = 'David Farrell';
 
 
 SELECT mem.firstname || ' ' || mem.surname AS fullname,
@@ -220,3 +219,13 @@ FROM
          AND starttime < '2012-09-15')
 WHERE cost > 30
 ORDER BY cost DESC;
+
+
+DELETE
+FROM cd.facilities
+WHERE facid = 9
+    AND name = 'Spa';
+
+
+INSERT INTO cd.facilities (facid, name, membercost, guestcost, initialoutlay, monthlymaintenance)
+VALUES (9, 'Spa', 20, 30, 100000, 800);
