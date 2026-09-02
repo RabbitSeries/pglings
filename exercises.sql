@@ -137,3 +137,86 @@ FROM cd.members
 WHERE recommendedby IS NOT NULL
 ORDER BY surname,
          firstname;
+
+
+SELECT mems.firstname as memfname,
+       mems.surname as memsname,
+       recommender.firstname as recfname,
+       recommender.surname as recsname
+FROM cd.members mems
+LEFT JOIN cd.members recommender ON mems.recommendedby = recommender.memid
+ORDER BY memsname,
+         memfname;
+
+-- PostgreSQL does not make SELECT aliases visible to the WHERE clause:
+-- psql:/home/rabbit/pglings/exercises.sql:159: ERROR:  column "facility" does not exist
+-- LINE 6: WHERE facility LIKE 'Tennis%'
+-- WHERE facility LIKE 'Tennis%'
+-- Either use the original column or use a subquery which actually output a alias column.
+
+SELECT (mems.firstname || ' ' || mems.surname) as member,
+       fac.name as facility
+FROM cd.members mems
+JOIN cd.bookings bks ON mems.memid = bks.memid
+JOIN cd.facilities fac ON bks.facid = fac.facid
+WHERE fac.name LIKE 'Tennis%'
+GROUP BY member,
+         facility;
+
+-- Although this is also a contrived exmaple,
+-- but SELECT can be hard to remain consistant among references,
+-- if no subquery applied.
+
+SELECT (mems.firstname || ' ' || mems.surname) as member,
+       fac.name as facility,
+       bks.slots * (CASE
+                        WHEN mems.memid = 0 THEN fac.guestcost
+                        ELSE fac.membercost
+                    END) AS cost
+FROM cd.members mems
+JOIN cd.bookings bks ON mems.memid = bks.memid
+JOIN cd.facilities fac ON bks.facid = fac.facid
+WHERE bks.starttime >= '2012-09-14'
+    AND bks.starttime < '2012-09-15'
+    AND bks.slots * (CASE
+                         WHEN mems.memid = 0 THEN fac.guestcost
+                         ELSE fac.membercost
+                     END) > 30
+ORDER BY cost DESC;
+
+-- Scalar sub queries
+-- "It is an error to use a query that returns more than one row or more than
+--  one column as a scalar subquery. (But if, during a particular execution,
+--  the subquery returns no rows, there is no error;
+--  the scalar result is taken to be null.)"
+
+SELECT DISTINCT member,
+
+    (SELECT firstname || ' ' || surname
+     FROM cd.members mems
+     WHERE mems.memid = rec_id) as recommender
+FROM
+    (SELECT (firstname || ' ' || surname) as member,
+            recommendedby as rec_id
+     FROM cd.members)
+ORDER BY member ASC;
+
+
+SELECT member,
+       facility,
+       cost
+FROM
+    (SELECT (mems.firstname || ' ' || mems.surname) as member,
+            fac.name as facility,
+            bks.slots * (CASE
+                             WHEN mems.memid = 0 THEN fac.guestcost
+                             ELSE fac.membercost
+                         END) AS cost,
+            bks.starttime as starttime
+     FROM cd.members mems
+     JOIN cd.bookings bks ON mems.memid = bks.memid
+     JOIN cd.facilities fac ON bks.facid = fac.facid
+     WHERE starttime >= '2012-09-14'
+         AND starttime < '2012-09-15')
+WHERE cost > 30
+ORDER BY cost DESC;
