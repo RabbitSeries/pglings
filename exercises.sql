@@ -220,12 +220,21 @@ FROM
 WHERE cost > 30
 ORDER BY cost DESC;
 
-
-DELETE
-FROM cd.facilities
-WHERE facid = 9
-    AND name = 'Spa';
+BEGIN;
 
 
 INSERT INTO cd.facilities (facid, name, membercost, guestcost, initialoutlay, monthlymaintenance)
 VALUES (9, 'Spa', 20, 30, 100000, 800);
+
+
+ROLLBACK;
+
+BEGIN;
+
+
+INSERT INTO cd.facilities (facid, name, membercost, guestcost, initialoutlay, monthlymaintenance)
+VALUES (9, 'Spa', 20, 30, 100000, 800),
+       (10, 'Squash Court 2', 3.5, 17.5, 5000, 80);
+
+
+ROLLBACK;
