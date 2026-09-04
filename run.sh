@@ -1,6 +1,8 @@
 #! /bin/sh
-# Optional: -v ON_ERROR_ROLLBACK=1, this active rollback on error performs the same as
-# passive rollback when the connection is about to close with a open transaction.
-psql -f - -d exercises -v ON_ERROR_STOP=1 <<EOF > psql.log
-\i $1
-EOF
+# Options: -v ON_ERROR_ROLLBACK=off, which is off by default, this is counter intuitive,
+# it should be called ON_ERROR_CONTINUE, when set to 'off' the connection will exit
+# and a rollback to some implicit savepoint is performed.
+# Options: -1, --single-transaction, the entire connection will be wrapped into a
+# BEGIN; COMMIT; clause.
+# Options: -v ON_ERROR_STOP=1
+psql -f $1 -d exercises -v ON_ERROR_STOP=1 | tee psql.log
