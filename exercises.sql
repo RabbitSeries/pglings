@@ -231,10 +231,185 @@ ROLLBACK;
 
 BEGIN;
 
+-- INSERT VALUES syntax is more ergonomic in comparison with SELECT and UNION as VALUES.
 
-INSERT INTO cd.facilities (facid, name, membercost, guestcost, initialoutlay, monthlymaintenance)
+INSERT INTO cd.facilities
 VALUES (9, 'Spa', 20, 30, 100000, 800),
        (10, 'Squash Court 2', 3.5, 17.5, 5000, 80);
 
 
 ROLLBACK;
+
+BEGIN;
+
+
+INSERT INTO cd.facilities
+VALUES ((SELECT max(facid)+1 FROM cd.facilities), 'Spa', 20, 30, 100000, 800);
+
+
+ROLLBACK;
+
+BEGIN;
+
+
+UPDATE cd.facilities
+SET initialoutlay = 10000
+WHERE name = 'Tennis Court 2'
+    AND initialoutlay = 8000;
+
+
+ROLLBACK;
+
+BEGIN;
+
+-- These should be more common: WHERE facid in (0,1)
+
+UPDATE cd.facilities
+SET membercost = 6,
+    guestcost = 30
+WHERE name ~* 'Tennis Court [12]';
+
+
+ROLLBACK;
+
+BEGIN;
+
+
+UPDATE cd.facilities
+SET (membercost,
+     guestcost) =
+    (SELECT membercost*1.1,
+            guestcost*1.1
+     FROM cd.facilities
+     WHERE facid = 0)
+WHERE facid = 1;
+
+
+ROLLBACK;
+
+BEGIN;
+
+-- Cavets in TRUNCATE:
+-- https://www.postgresql.org/docs/current/mvcc-caveats.html
+
+DELETE
+FROM cd.bookings;
+
+
+ROLLBACK;
+
+BEGIN;
+
+
+DELETE
+FROM cd.members
+WHERE memid = 37;
+
+
+ROLLBACK;
+
+BEGIN;
+
+-- Heavy subquery matching
+-- DELETE
+-- FROM cd.members
+-- WHERE memid NOT IN
+--         (SELECT memid
+--          FROM cd.bookings);
+
+DELETE
+FROM cd.members mems
+WHERE NOT EXISTS
+        (SELECT 1
+         FROM cd.bookings
+         WHERE memid = mems.memid);
+
+
+ROLLBACK;
+
+
+SELECT COUNT(facid)
+FROM cd.facilities;
+
+
+SELECT COUNT(*)
+FROM cd.facilities
+WHERE guestcost >= 10;
+
+-- Calculate for each row is less effective.
+
+SELECT *
+FROM
+    (SELECT memid,
+
+         (SELECT COUNT(*)
+          FROM cd.members mems
+          WHERE mems.recommendedby = recommender.memid) AS count
+     FROM cd.members recommender)
+WHERE count > 0
+ORDER BY memid;
+
+
+SELECT recommendedby,
+       COUNT(*)
+FROM cd.members
+WHERE recommendedby IS NOT NULL
+GROUP BY recommendedby
+ORDER BY recommendedby;
+
+
+SELECT facid,
+       SUM(slots) AS "Total Slots"
+FROM cd.bookings
+GROUP BY facid
+ORDER BY facid;
+
+-- Aggregate functions can also be used in ORDER BY clause.
+-- ORDER BY SUM(slots);
+
+SELECT facid,
+       SUM(slots) AS "Total Slots"
+FROM cd.bookings
+WHERE starttime >= '2012-09-01'
+    AND starttime < '2012-10-1'
+GROUP BY facid
+ORDER BY "Total Slots";
+
+
+SELECT facid,
+       date_part('Month', starttime) AS "month",
+       SUM(slots) AS "Total Slots"
+FROM cd.bookings
+WHERE date_part('Year', starttime) = 2012
+GROUP BY facid,
+         "month"
+ORDER BY facid,
+         "month";
+
+
+SELECT COUNT(*)
+FROM
+    (SELECT 1
+     FROM cd.members mems
+     JOIN cd.bookings bks ON mems.memid = bks.memid
+     GROUP BY(mems.memid));
+
+
+SELECT COUNT(DISTINCT memid)
+FROM cd.bookings;
+
+
+SELECT facid,
+       SUM(slots) AS "Total Slots"
+FROM cd.bookings
+GROUP BY facid
+HAVING "Total Slots" > 1000
+ORDER BY facid ASC;
+
+
+SELECT facid,
+       SUM(slots) AS "Total Slots"
+FROM cd.bookings
+GROUP BY facid
+HAVING SUM(slots) > 1000
+ORDER BY facid ASC;
