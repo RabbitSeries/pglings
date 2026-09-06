@@ -746,8 +746,9 @@ FROM
 WHERE "rank" <= 3
 ORDER BY name;
 
--- OVER windows is also allowed to access grouped rows.
--- The over window can also contain calculations.
+-- OVER windows are also allowed to access grouped rows.
+-- There can also be calculations in the expression.
+-- But no cascading aggregate functions allowed, e.g. SUM( / COUNT).
 -- Thus the above query can be simplified into:
 
 SELECT *
@@ -790,3 +791,29 @@ JOIN cd.facilities fac ON bks.facid = fac.facid
 GROUP BY fac.facid,
          name
 ORDER BY name;
+
+WITH dayrev AS
+    (SELECT to_char(starttime, 'YYYY-MM-DD') AS date,
+            SUM(slots * CASE
+                            WHEN memid = 0 THEN guestcost
+                            ELSE membercost
+                        END) AS revenue
+     FROM cd.bookings bks
+     JOIN cd.facilities fac ON bks.facid = fac.facid
+     WHERE starttime >= (date '2012-08-01' - 14)
+         AND starttime < '2012-09-01'
+     GROUP BY date)
+SELECT date, AVG(revenue) OVER (
+                                ORDER BY date ASC ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) AS revenue
+FROM dayrev
+WHERE date >= '2012-08-01';
+
+
+SELECT timestamp '2012-08-31 01:00:00';
+
+
+SELECT timestamp '2012-08-31 01:00:00' - '2012-07-30 01:00:00' Interval;
+
+
+SELECT *
+FROM generate_series('Oct 1, 2012', timestamp 'Nov 1, 2012' - interval '1 day' , interval '1 day');
