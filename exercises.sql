@@ -817,3 +817,49 @@ SELECT timestamp '2012-08-31 01:00:00' - '2012-07-30 01:00:00' Interval;
 
 SELECT *
 FROM generate_series('Oct 1, 2012', timestamp 'Nov 1, 2012' - interval '1 day' , interval '1 day');
+
+
+SELECT date_part('epoch', timestamp '2012-09-02 00:00:00' - '2012-08-31 01:00:00');
+
+
+SELECT ROW_NUMBER() OVER() AS "month",
+       (EXTRACT ('day'
+                 FROM firstday + '1 month' - firstday) || ' days') AS length
+FROM generate_series('2012-01-01', date '2012-12-01' , interval '1 month') AS dates(firstday);
+
+-- CTE can not use constants.
+
+SELECT ((ts.ts + interval '1 month')::date - ts.ts - EXTRACT('day'
+                                                             FROM ts.ts)::integer + 1) || ' days' AS remaining
+FROM
+    (SELECT date '2012-02-11 01:00:00') AS ts(ts);
+
+
+select (date_trunc('month', ts.testts) + interval '1 month') - date_trunc('day', ts.testts) as remaining
+from
+    (select timestamp '2012-02-11 01:00:00' as testts) ts;
+
+
+SELECT starttime,
+       starttime + INTERVAL '30 minutes' * slots AS endtime
+FROM cd.bookings
+ORDER BY endtime DESC,
+         starttime DESC
+LIMIT 10;
+
+
+SELECT date_trunc('month', starttime) AS month,
+       COUNT(*)
+FROM cd.bookings
+GROUP BY month
+ORDER BY month;
+
+
+-- TODO
+SELECT facs.name,
+       date_trunc('month', starttime) AS month,
+       COUNT(DISTINCT date_trunc('day', starttime)) AS opendays
+FROM cd.bookings bks
+JOIN cd.facilities facs ON bks.facid = facs.facid
+GROUP BY facs.name,
+         month;
