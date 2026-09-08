@@ -856,10 +856,16 @@ ORDER BY month;
 
 
 -- TODO
-SELECT facs.name,
-       date_trunc('month', starttime) AS month,
-       COUNT(DISTINCT date_trunc('day', starttime)) AS opendays
-FROM cd.bookings bks
-JOIN cd.facilities facs ON bks.facid = facs.facid
-GROUP BY facs.name,
-         month;
+select name, month, 
+	round((100*slots)/
+		cast(
+			25*(cast((month + interval '1 month') as date)
+			- cast (month as date)) as numeric),1) as utilisation
+	from  (
+		select facs.name as name, date_trunc('month', starttime) as month, sum(slots) as slots
+			from cd.bookings bks
+			inner join cd.facilities facs
+				on bks.facid = facs.facid
+			group by facs.facid, month
+	) as inn
+order by name, month  
