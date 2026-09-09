@@ -828,6 +828,7 @@ SELECT ROW_NUMBER() OVER() AS "month",
 FROM generate_series('2012-01-01', date '2012-12-01' , interval '1 month') AS dates(firstday);
 
 -- CTE can not use constants.
+-- WITH sth AS 'literal'
 
 SELECT ((ts.ts + interval '1 month')::date - ts.ts - EXTRACT('day'
                                                              FROM ts.ts)::integer + 1) || ' days' AS remaining
@@ -854,18 +855,18 @@ FROM cd.bookings
 GROUP BY month
 ORDER BY month;
 
-
--- TODO
-select name, month, 
-	round((100*slots)/
-		cast(
-			25*(cast((month + interval '1 month') as date)
-			- cast (month as date)) as numeric),1) as utilisation
-	from  (
-		select facs.name as name, date_trunc('month', starttime) as month, sum(slots) as slots
-			from cd.bookings bks
-			inner join cd.facilities facs
-				on bks.facid = facs.facid
-			group by facs.facid, month
-	) as inn
-order by name, month  
+WITH total_slots AS
+    (SELECT facs.name,
+            date_trunc('month', bks.starttime) AS "month",
+            SUM(bks.slots) AS acc
+     FROM cd.bookings bks
+     JOIN cd.facilities facs ON bks.facid = facs.facid
+     GROUP BY facs.name,
+              "month")
+SELECT "name",
+       "month",
+       round(100* acc / (EXTRACT ('day'
+                                  FROM "month" + '1 month' - "month")) / 25, 1) utilisation
+FROM total_slots
+ORDER BY "name",
+         "month";
