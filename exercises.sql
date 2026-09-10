@@ -870,3 +870,41 @@ SELECT "name",
 FROM total_slots
 ORDER BY "name",
          "month";
+
+
+SELECT surname || ', ' || firstname
+FROM cd.members;
+
+
+SELECT *
+FROM cd.facilities
+WHERE name LIKE 'Tennis%';
+
+
+SELECT *
+FROM cd.facilities
+WHERE name ~* '^tennis*';
+
+
+SELECT memid,
+       telephone
+FROM cd.members
+WHERE telephone ~ '[()]';
+
+
+SELECT LPAD(zipcode::text, 5, '0')
+FROM cd.members;
+
+
+SELECT UPPER(substring(surname
+                       FOR 1)) AS letter,
+       COUNT(*)
+FROM cd.members
+GROUP BY letter
+ORDER BY letter;
+
+
+SELECT memid,
+       regexp_replace(telephone, '[()[.-.] ]', '', 'g') --    regexp_replace(telephone, '[^0-9]', '', 'g')
+FROM cd.members;
+
