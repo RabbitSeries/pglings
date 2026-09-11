@@ -827,13 +827,18 @@ SELECT ROW_NUMBER() OVER() AS "month",
                  FROM firstday + '1 month' - firstday) || ' days') AS length
 FROM generate_series('2012-01-01', date '2012-12-01' , interval '1 month') AS dates(firstday);
 
--- CTE can not use constants.
--- WITH sth AS 'literal'
+-- Literals CTE must use table_alias(column_alias)
 
 SELECT ((ts.ts + interval '1 month')::date - ts.ts - EXTRACT('day'
                                                              FROM ts.ts)::integer + 1) || ' days' AS remaining
 FROM
     (SELECT date '2012-02-11 01:00:00') AS ts(ts);
+
+WITH ts(ts) AS
+    (SELECT date '2012-02-11 01:00:00')
+SELECT ((ts.ts + interval '1 month')::date - ts.ts - EXTRACT('day'
+                                                             FROM ts.ts)::integer + 1) || ' days' AS remaining
+FROM ts;
 
 
 select (date_trunc('month', ts.testts) + interval '1 month') - date_trunc('day', ts.testts) as remaining
@@ -908,3 +913,19 @@ SELECT memid,
        regexp_replace(telephone, '[()[.-.] ]', '', 'g') --    regexp_replace(telephone, '[^0-9]', '', 'g')
 FROM cd.members;
 
+WITH RECURSIVE chains(recommender) AS
+    (SELECT mems.recommendedby
+     FROM cd.members mems
+     WHERE mems.memid = 27
+     UNION ALL SELECT
+         (SELECT mems.recommendedby
+          FROM cd.members mems
+          WHERE mems.memid = recommender)
+     FROM chains
+     WHERE recommender IS NOT NULL)
+SELECT memid,
+       firstname,
+       surname
+FROM chains
+JOIN cd.members mems ON chains.recommender = mems.memid
+ORDER BY memid DESC;
