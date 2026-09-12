@@ -913,19 +913,83 @@ SELECT memid,
        regexp_replace(telephone, '[()[.-.] ]', '', 'g') --    regexp_replace(telephone, '[^0-9]', '', 'g')
 FROM cd.members;
 
-WITH RECURSIVE chains(recommender) AS
-    (SELECT mems.recommendedby
+-- Mutilple sources have a Cartesian product (cross join) result.
+-- Note there will be a NULL parent(recommendedby) of the root node in the UNION ALL result.
+-- UNION implies distinct, but UNION ALL doesn't and is time efficient.
+-- There is built-in syntax to compute a depth- or breadth-first sort column and cycle detection.
+-- SEARCH DEPTH FIRST BY *track columns* SET *records column alias*
+-- See more in PGD [7.8.2.1. Search Order] and [7.8.2.2. Cycle Detection]
+ WITH RECURSIVE dfs(recommender) AS
+    (SELECT recommendedby
      FROM cd.members mems
      WHERE mems.memid = 27
-     UNION ALL SELECT
+     UNION ALL
          (SELECT mems.recommendedby
-          FROM cd.members mems
-          WHERE mems.memid = recommender)
-     FROM chains
-     WHERE recommender IS NOT NULL)
+          FROM dfs
+          JOIN cd.members mems ON dfs.recommender = mems.memid))
 SELECT memid,
        firstname,
        surname
-FROM chains
-JOIN cd.members mems ON chains.recommender = mems.memid
+FROM dfs
+JOIN cd.members mems ON dfs.recommender = mems.memid
 ORDER BY memid DESC;
+
+WITH RECURSIVE bfs(bfsmemid) AS
+    (SELECT memid
+     FROM cd.members mems
+     WHERE mems.recommendedby = 1
+     UNION ALL SELECT mems.memid
+     FROM cd.members mems
+     JOIN bfs ON mems.recommendedby = bfs.bfsmemid)
+SELECT mems.memid,
+       mems.firstname,
+       mems.surname
+FROM bfs
+JOIN cd.members mems ON bfs.bfsmemid = mems.memid
+ORDER BY mems.memid;
+
+-- This shows the bfs ordering (but the search order may not be bfs).
+-- The where clause is redundant.
+WITH RECURSIVE bfs(bfsmemid, history, depth, cnt) AS
+    (SELECT memid,
+            firstname || ' ' || surname,
+            1,
+            1::bigint
+     FROM cd.members mems
+     WHERE mems.recommendedby = 1
+     UNION ALL SELECT mems.memid,
+                      string_agg(firstname || ' ' || surname, ', ') OVER (),
+                      depth + 1,
+                      COUNT(*) OVER ()
+     FROM cd.members mems
+     JOIN bfs ON mems.recommendedby = bfs.bfsmemid --  WHERE mems.recommendedby = bfsmemid
+)
+SELECT mems.memid,
+       mems.firstname,
+       mems.surname,
+       history,
+       cnt,
+       depth
+FROM bfs
+JOIN cd.members mems ON bfs.bfsmemid = mems.memid
+ORDER BY depth,
+         mems.memid;
+
+WITH RECURSIVE recommender(member, recommender) AS
+    (SELECT memid,
+            recommendedby
+     FROM cd.members
+     UNION ALL SELECT recommender.member,
+                      recommendedby
+     FROM cd.members mems
+     JOIN recommender ON mems.memid = recommender.recommender)
+SELECT member,
+       recommender,
+       firstname,
+       surname
+FROM recommender rec
+JOIN cd.members mems ON rec.recommender = mems.memid
+WHERE member IN (12,
+                 22)
+ORDER BY member,
+         recommender DESC;
